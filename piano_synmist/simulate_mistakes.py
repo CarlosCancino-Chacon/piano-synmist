@@ -8,7 +8,11 @@ import copy
 from .region_classifier import RegionClassifier
 from . import lowlvl 
 import csv
-from utils import payload_to_csv, timemap_to_csv
+from .utils import payload_to_csv, timemap_to_csv
+
+from importlib.resources import files
+
+SAMPLING_PROB = str(files("piano_synmist") / "assets" / "sampling_prob.csv")
 
 #Parametrizations:
 #forward_backwards
@@ -71,7 +75,7 @@ class Mistaker():
         self.na = rc.na     # note array with region classification
         self.white_keys, self.black_keys = self.black_white_keys()
 
-        self.sampling_prob = pd.read_csv("sampling_prob.csv", index_col='index')
+        self.sampling_prob = pd.read_csv(SAMPLING_PROB, index_col='index')
 
     def schedule_mistakes(self):
         self.mistake_scheduler()

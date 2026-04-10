@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "piano_synmist"
-version = "0.0.2"
+version = "0.0.3"
 description = "A package for overlaying synthetic mistakes on midi piano performances"
 readme = "README.md"
 authors = [
@@ -12,21 +12,27 @@ authors = [
 ]
 license = {text = "MIT"}
 requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "pretty_midi",
+    "partitura>=1.8.0",
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
 
+[project.optional-dependencies]
+adapters = ["torch"]
+
 [project.urls]
 "Homepage" = "https://github.com/alia-morsi/piano-synmist"
 "Bug Tracker" = "https://github.com/alia-morsi/piano-synmist/issues"
 
-[tool.setuptools]
-packages = ["piano_synmist"]
-py-modules = ["lowlvl", "simulate_mistakes", "utils", "region_classifier"]
-
-[tool.setuptools.package-dir]
-piano_synmist = "."
+[tool.setuptools.packages.find]
+where = ["."]
 
 

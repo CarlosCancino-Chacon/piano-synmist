@@ -255,7 +255,7 @@ tramp
 .project
 .classpath
 .settings/
-.claude
+
 
 
 # =============================================================================
@@ -274,3 +274,6 @@ secrets.json
 .secrets
 credentials.json
 service-account*.json
+
+dev/
+.claude
