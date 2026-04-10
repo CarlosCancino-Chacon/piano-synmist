@@ -1,7 +1,5 @@
-import librosa
 import pretty_midi
 import os
-import pathlib
 import csv
 import ast
 import numpy as np

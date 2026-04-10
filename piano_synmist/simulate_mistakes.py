@@ -1,13 +1,12 @@
 
 import partitura as pt
-import mido
 import math
 import numpy as np
 import pandas as pd
 import numpy.lib.recfunctions as rfn
 import copy
-from region_classifier import RegionClassifier
-import lowlvl 
+from .region_classifier import RegionClassifier
+from . import lowlvl 
 import csv
 from utils import payload_to_csv, timemap_to_csv
 

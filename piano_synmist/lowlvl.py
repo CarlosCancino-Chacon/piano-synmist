@@ -1,5 +1,4 @@
 import partitura as pt
-import mido
 import math
 import numpy as np
 import copy
