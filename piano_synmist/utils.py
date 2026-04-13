@@ -10,38 +10,39 @@ from matplotlib.gridspec import GridSpec
 
 #todo: function to synthesize the midi using fluidsynth and just return it as a data obj, rather than having to do these file reads/writes
 
-def slice_prettymidi(pretty_midi_obj, start_time, end_time):
-    # Create a new PrettyMIDI object
-    new_pretty_midi = pretty_midi.PrettyMIDI()
+# This function was not used anywhere, and it can be substituted with a partitura equivalent
+# def slice_prettymidi(pretty_midi_obj, start_time, end_time):
+#     # Create a new PrettyMIDI object
+#     new_pretty_midi = pretty_midi.PrettyMIDI()
     
-    # Iterate over all instruments in the original PrettyMIDI object
-    for instrument in pretty_midi_obj.instruments:
-        # Create a new Instrument for the new PrettyMIDI object
-        new_instrument = pretty_midi.Instrument(program=instrument.program, is_drum=instrument.is_drum, name=instrument.name)
-        # Filter notes
-        new_instrument.notes = [note for note in instrument.notes if start_time <= note.start < end_time]
-        # Filter control changes
-        new_instrument.control_changes = [
-            cc for cc in instrument.control_changes if start_time <= cc.time < end_time]
-        # Filter pitch bends
-        new_instrument.pitch_bends = [
-            pitch_bend for pitch_bend in instrument.pitch_bends if start_time <= pitch_bend.time < end_time]
-        # Add the filtered instrument to the new PrettyMIDI object
-        new_pretty_midi.instruments.append(new_instrument)
+#     # Iterate over all instruments in the original PrettyMIDI object
+#     for instrument in pretty_midi_obj.instruments:
+#         # Create a new Instrument for the new PrettyMIDI object
+#         new_instrument = pretty_midi.Instrument(program=instrument.program, is_drum=instrument.is_drum, name=instrument.name)
+#         # Filter notes
+#         new_instrument.notes = [note for note in instrument.notes if start_time <= note.start < end_time]
+#         # Filter control changes
+#         new_instrument.control_changes = [
+#             cc for cc in instrument.control_changes if start_time <= cc.time < end_time]
+#         # Filter pitch bends
+#         new_instrument.pitch_bends = [
+#             pitch_bend for pitch_bend in instrument.pitch_bends if start_time <= pitch_bend.time < end_time]
+#         # Add the filtered instrument to the new PrettyMIDI object
+#         new_pretty_midi.instruments.append(new_instrument)
     
-    # Copy over tempo changes, time signatures, and key signatures that fall within the time range
-    new_pretty_midi.time_signature_changes = [
-        ts for ts in pretty_midi_obj.time_signature_changes if start_time <= ts.time < end_time]
-    new_pretty_midi.key_signature_changes = [
-        ks for ks in pretty_midi_obj.key_signature_changes if start_time <= ks.time < end_time]
-    new_pretty_midi._tick_scales = [
-        ts for ts in pretty_midi_obj._tick_scales if start_time <= ts[0] < end_time]
+#     # Copy over tempo changes, time signatures, and key signatures that fall within the time range
+#     new_pretty_midi.time_signature_changes = [
+#         ts for ts in pretty_midi_obj.time_signature_changes if start_time <= ts.time < end_time]
+#     new_pretty_midi.key_signature_changes = [
+#         ks for ks in pretty_midi_obj.key_signature_changes if start_time <= ks.time < end_time]
+#     new_pretty_midi._tick_scales = [
+#         ts for ts in pretty_midi_obj._tick_scales if start_time <= ts[0] < end_time]
     
-    # Copy over tempo changes (you might want to filter this if there are many)
-    new_pretty_midi._tempo_changes = [
-        (time, tempo) for time, tempo in zip(pretty_midi_obj.get_tempo_changes()[0], pretty_midi_obj.get_tempo_changes()[1])
-        if start_time <= time < end_time]
-    return new_pretty_midi
+#     # Copy over tempo changes (you might want to filter this if there are many)
+#     new_pretty_midi._tempo_changes = [
+#         (time, tempo) for time, tempo in zip(pretty_midi_obj.get_tempo_changes()[0], pretty_midi_obj.get_tempo_changes()[1])
+#         if start_time <= time < end_time]
+#     return new_pretty_midi
 
 #returns a dtype object that follows the dtype_str given. This is to help us serialize the saved mistakes.
 #might not be needed with our new way for parsing the lines
@@ -236,6 +237,7 @@ class SynmistPerformance:
         (self.tgt_mistakelabel_notes, 
         self.tgt_mistakelabel_time, 
         self.tgt_mistakelabel_label) = parse_mistake_labels_file(mistakelabel_csv)
+        
         self.tgt_mistakelabel_midi = pretty_midi.PrettyMIDI(mistakelabel_midi)
         self.tgt_performance = pretty_midi.PrettyMIDI(tgt_perf)
         self.src_perf = pretty_midi.PrettyMIDI(src_perf)
