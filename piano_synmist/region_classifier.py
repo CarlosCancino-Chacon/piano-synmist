@@ -1,6 +1,8 @@
 import partitura as pt
 import numpy as np
 import numpy.lib.recfunctions as rfn
+from pathlib import Path
+from partitura.performance import Performance, PerformedPart
 
 class RegionClassifier():
     def __init__(self, performance_path, burgmuller=False, save=True):
@@ -13,7 +15,10 @@ class RegionClassifier():
             performance_path (str): 
         """
 
-        self.performance = pt.load_performance(performance_path)
+        if isinstance(performance_path, (str, Path)):
+            self.performance = pt.load_performance(performance_path)
+        elif isinstance(performance_path, Performance):
+            self.performance = performance_path
 
         # remove all the pitch = 0,1 notes for burgmuller
         if burgmuller:

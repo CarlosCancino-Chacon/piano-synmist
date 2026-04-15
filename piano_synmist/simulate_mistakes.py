@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import partitura as pt
 import math
 import numpy as np
@@ -8,11 +10,13 @@ from .region_classifier import RegionClassifier
 from . import lowlvl 
 import csv
 from .utils import payload_to_csv, timemap_to_csv
+import pathlib
 
 from importlib.resources import files
 
+from partitura.performance import Performance, PerformedPart
+
 SAMPLING_PROB = str(files("piano_synmist") / "assets" / "sampling_prob.csv")
-import csv
 
 #Parametrizations:
 MAX_DUR4DRAG = 0.5
@@ -45,7 +49,7 @@ def print_payload_list(payload):
 class Mistaker():
     def __init__(self, performance_path, time_series_annotation=None, mode='runthrough',
                  segments=None, time_gap=3.0, use_region_classifier=True,
-                 sampling_prob_path=SAMPLING_PROB):
+                 sampling_prob_path=SAMPLING_PROB, alignment=None):
         """Overlay synthetic mistakes onto a MIDI piano performance.
 
         Args:
@@ -59,13 +63,43 @@ class Mistaker():
                 without texture analysis.
             sampling_prob_path (str): path to sampling probability CSV
         """
-        self.performance_path = performance_path
-        self.performance = pt.load_performance(performance_path, pedal_threshold=127)
+
+        # TODO: think of a better way to do class overloading here. Maybe with @classsmethod?
+
+        if isinstance(performance_path, (str, pathlib.Path)):
+            # In this case, the alignment info will be discarded
+            self.performance_path = pathlib.Path(performance_path)
+
+            extension = self.performance_path.suffix
+        
+        
+            if extension == ".match":
+                self.performance, self.alignment = pt.load_match(filename=performance_path,
+                                                                create_score=False,
+                                                                pedal_threshold=127,)
+            else:
+                self.alignment = None
+                self.performance = pt.load_performance(performance_path, pedal_threshold=127)
+            
+            na = self.performance.note_array()
+
+        elif isinstance(performance_path, Performance):
+            self.performance = performance_path
+            self.alignment = alignment
+            na = self.performance.note_array()
+
+        elif isinstance(performance_path, np.ndarray):
+            self.performance = Performance(PerformedPart.from_note_array(performance_path))
+            na = performance_path
+            self.alignment = alignment
+            
+            
+        na.sort(order='onset_sec')
+
         self.time_series_annotation = time_series_annotation
         self.mode = mode
 
-        na = self.performance.note_array()
-        na.sort(order='onset_sec')
+
 
         self.change_tracker = lowlvl.lowlvl(
             na, mode=mode,
@@ -78,8 +112,8 @@ class Mistaker():
             self.segments = None
 
         if use_region_classifier:
-            from region_classifier import RegionClassifier
-            rc = RegionClassifier(performance_path, save=False)
+            from .region_classifier import RegionClassifier
+            rc = RegionClassifier(self.performance, save=False)
             self.na = rc.na
         else:
             # Add offset_sec if missing (RegionClassifier normally provides it).

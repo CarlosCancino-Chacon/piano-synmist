@@ -78,7 +78,7 @@ regular_na_fields = [('onset_sec', '<f4'), ('duration_sec', '<f4'), ('onset_tick
 
 #Most Likely, ts_annot will not be supported in segmented practice
 class lowlvl:
-    def __init__(self, src_na, mode='runthrough', ts_annot=[]):
+    def __init__(self, src_na, mode='runthrough', ts_annot=None, alignment=None):
         #the labels would be maintained wrt to timeto or the tgt_na 
         #target = using the nearest giventime, get the timeto. In thoery, all existing score notes will
         #have a timefrom value in the safe zones.
@@ -97,7 +97,19 @@ class lowlvl:
 
         self.repeat_tracker = {} #dictionary to hold the time_from -> time_to mappings for performance regions that will be removed
                                  #the format is: (interval for tgt time region) -> ([target time points], [src time points])
-        self.ts_annot = ts_annot
+        if ts_annot is not None:
+            # Avoid issues with mutable default arguments
+            # https://stackoverflow.com/questions/366422/how-can-i-avoid-issues-caused-by-pythons-early-bound-default-parameters-e-g-m
+            self.ts_annot = ts_annot
+        else:
+            self.ts_annot = []
+
+        # Keep track of the alignment
+        self.alignment = alignment
+        if self.alignment is not None:
+            self.tgt_alignment = self.alignment.copy()
+        else:
+            self.tgt_alignment = False
 
         self.onsets = src_na['onset_sec']
         self.src_na = src_na
