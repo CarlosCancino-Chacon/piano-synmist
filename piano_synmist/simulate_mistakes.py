@@ -49,7 +49,7 @@ def print_payload_list(payload):
 class Mistaker():
     def __init__(self, performance_path, time_series_annotation=None, mode='runthrough',
                  segments=None, time_gap=3.0, use_region_classifier=True,
-                 sampling_prob_path=SAMPLING_PROB, alignment=None):
+                 sampling_prob_path=SAMPLING_PROB, alignment=None, seed=None):
         """Overlay synthetic mistakes onto a MIDI piano performance.
 
         Args:
@@ -62,7 +62,12 @@ class Mistaker():
                 detection.  Set to False for config-based mistake specification
                 without texture analysis.
             sampling_prob_path (str): path to sampling probability CSV
+            seed: seed for the internal numpy random Generator. Accepts anything
+                np.random.default_rng accepts (int, SeedSequence, Generator, None).
+                None (default) gives fresh, non-reproducible randomness.
         """
+
+        self.rng = np.random.default_rng(seed)
 
         # TODO: think of a better way to do class overloading here. Maybe with @classsmethod?
 
@@ -209,7 +214,7 @@ class Mistaker():
             note = na[nearest_idx]
 
             if mistake_type == 'forward_backward_insertion':
-                forward = item.get('forward', np.random.random() > 0.5)
+                forward = item.get('forward', self.rng.random() > 0.5)
                 payload.append((note['onset_sec'], 'forward_backward_insertion', 
                                {'note': note, 'forward': forward}))
 
@@ -243,7 +248,7 @@ class Mistaker():
     def create_payload(self, parsed_list):
         """Creates payload from the interactive parsed list of note locations."""
         payload = []
-        rollback_dice = np.random.random()
+        rollback_dice = self.rng.random()
 
         for mistake_item in parsed_list:
             start_time = mistake_item['start_time']
@@ -256,12 +261,12 @@ class Mistaker():
             for note in notes_in_range:
                 if note['pitch'] == pitch:
                     note_match = note
-            if note_match is None: 
-                note_match = notes_in_range[np.random.choice(len(notes_in_range), 1, replace=True)]
+            if note_match is None:
+                note_match = notes_in_range[self.rng.choice(len(notes_in_range), 1, replace=True)]
 
             note = note_match
             if mistake_type == 'forward_backward_insertion':
-                payload.append((note['onset_sec'], 'forward_backward_insertion', {'note': note, 'forward': np.random.random() > 0.5}))
+                payload.append((note['onset_sec'], 'forward_backward_insertion', {'note': note, 'forward': self.rng.random() > 0.5}))
             if mistake_type == 'mistouch':
                 payload.append((note['onset_sec'], 'mistouch', {'note': note,}))
             if mistake_type == 'pitch_change':
@@ -381,12 +386,12 @@ class Mistaker():
             mistake_probabilities = self.get_mistake_probability(texture_group)
             mistake_types, probabilities = zip(*mistake_probabilities.items())
             probabilities = np.array(probabilities) / np.sum(probabilities)
-            mistake_type = np.random.choice(mistake_types, p=probabilities)
+            mistake_type = self.rng.choice(mistake_types, p=probabilities)
 
-            rollback_dice = np.random.random()   
+            rollback_dice = self.rng.random()
 
             if mistake_type == 'forward_backward_insertion':
-                payload.append((note['onset_sec'], 'forward_backward_insertion', {'note': note, 'forward': np.random.random() > 0.5}))
+                payload.append((note['onset_sec'], 'forward_backward_insertion', {'note': note, 'forward': self.rng.random() > 0.5}))
             if mistake_type == 'mistouch':
                 payload.append((note['onset_sec'], 'mistouch', {'note': note,}))
             if mistake_type == 'pitch_change':
@@ -413,7 +418,7 @@ class Mistaker():
         return payload
 
     def sample_note(self, data):
-        return data[np.random.choice(len(data))]
+        return data[self.rng.integers(len(data))]
 
     def sample_group(self, data, group):
         mask = data[group] == 1
@@ -421,18 +426,18 @@ class Mistaker():
         if len(group_data) == 0:
             print(f"no data in group {group}.")
             return group_data
-        return group_data[np.random.choice(len(group_data))]
+        return group_data[self.rng.integers(len(group_data))]
 
     ########### Mid Level Mistake Functions ############
     def rollback(self, note, events_back_range):
-        num_events_back = np.random.randint(events_back_range[0], events_back_range[1])
+        num_events_back = self.rng.integers(events_back_range[0], events_back_range[1])
         idx, notes_to_repeat = self.change_tracker.get_notes(note['onset_sec'], num_events_back)
 
         onset_shift = notes_to_repeat['onset_sec'][0]
         # NOTE: go_back always re-fetches notes from src_na internally (lowlvl.go_back line 452),
         # so we no longer zero out notes_to_repeat here — that was dead code.
 
-        hesitation = np.random.uniform(0.2, 0.8)
+        hesitation = self.rng.uniform(0.2, 0.8)
         self.change_tracker.time_offset(note['onset_sec'] + note['duration_sec'], hesitation, 'rollback')
         self.change_tracker.go_back(onset_shift, note['onset_sec'] + note['duration_sec'])
         return
@@ -455,25 +460,25 @@ class Mistaker():
 
         if not len(insert_pitches_):
             insert_pitches_ = insert_pitches
-        insert_pitch = np.random.choice(insert_pitches_)
-        
-        onset = note['onset_sec'][0] + np.random.uniform(low=0.0, high=0.5) * 0.05
-        duration = note['duration_sec'][0] + np.random.uniform(low=0.0, high=0.5) * 0.05 
-        velocity = int(((np.random.random() * 0.5) + 0.5) * note['velocity'])
+        insert_pitch = self.rng.choice(insert_pitches_)
+
+        onset = note['onset_sec'][0] + self.rng.uniform(low=0.0, high=0.5) * 0.05
+        duration = note['duration_sec'][0] + self.rng.uniform(low=0.0, high=0.5) * 0.05
+        velocity = int(((self.rng.random() * 0.5) + 0.5) * note['velocity'])
 
         self.change_tracker.pitch_insert(onset, insert_pitch['pitch'], duration, velocity, "fwdbackwd") 
         print(f"added forward={forward} insertion at note {note['id']} with pitch {insert_pitch['pitch']}.")
 
     def mistouch(self, note):
         """Add mistouched inserted note for the given note."""
-        if note['pitch'] in self.white_keys: 
-            insert_pitch = self.white_keys[self.white_keys.index(note['pitch']) + (np.random.choice([1, -1]))]
+        if note['pitch'] in self.white_keys:
+            insert_pitch = self.white_keys[self.white_keys.index(note['pitch']) + self.rng.choice([1, -1])]
             assert(insert_pitch != note['pitch'])
         else:
-            insert_pitch = note['pitch'] + (np.random.choice([1, -1]))
+            insert_pitch = note['pitch'] + self.rng.choice([1, -1])
 
         duration = 0.2
-        velocity = np.random.randint(30, 70)
+        velocity = self.rng.integers(30, 70)
 
         self.change_tracker.pitch_insert(note['onset_sec'], insert_pitch, duration, velocity, "mistouch")
         print(f"added mistouch insertion at note {note['id']} with pitch {insert_pitch}.")
@@ -481,7 +486,7 @@ class Mistaker():
     def pitch_change(self, note, rollback=False, change_chordblock=False):
         """Change the pitch of the given note."""
         changed_pitch = note['pitch']
-        if np.random.random() > 0.5:
+        if self.rng.random() > 0.5:
             neighbor_pitches = self.na[self.na['offset_sec'] < note['onset_sec']]
             if len(neighbor_pitches):
                 max_onset = neighbor_pitches['onset_sec'].max()
@@ -489,7 +494,7 @@ class Mistaker():
                 near_neighbor = neighbor_pitches[np.abs(neighbor_pitches['pitch'] - note['pitch']).argmin()]
                 changed_pitch = near_neighbor['pitch']
             else:
-                changed_pitch = note['pitch'] + np.random.choice([-2, -1, 1, 2])
+                changed_pitch = note['pitch'] + self.rng.choice([-2, -1, 1, 2])
         
         self.change_tracker.pitch_insert(note['onset_sec'], changed_pitch, note['duration_sec'], note['velocity'], "wrong_pred")
         self.change_tracker.pitch_delete(note['onset_sec'], note['pitch'], "wrong_pred")
@@ -506,20 +511,20 @@ class Mistaker():
                 notes_shortly_after_dict[n['note_on']] = []
             notes_shortly_after_dict[n['note_on']].append(n)
             
-        drag_time = np.random.uniform(0.2, 0.8) * min(note['duration_sec'][0], MAX_DUR4DRAG)
+        drag_time = self.rng.uniform(0.2, 0.8) * min(note['duration_sec'][0], MAX_DUR4DRAG)
         if not self.change_tracker.change_note_offset(note['onset_sec'], note['pitch'], drag_time, 'drag'):
             print('exit drag function for initial pitch not found')
             return
 
         drag_time_accum = drag_time
         for key, n_list in notes_shortly_after_dict.items():
-            ripple_drag_time_n = drag_time * np.random.random()
+            ripple_drag_time_n = drag_time * self.rng.random()
             n = n_list[0]
             start_time = n['note_on']
-            self.change_tracker.time_offset(start_time, ripple_drag_time_n, 'drag') 
+            self.change_tracker.time_offset(start_time, ripple_drag_time_n, 'drag')
             for n in n_list:
-                self.change_tracker.change_note_offset(n['note_on'], n['pitch'], 
-                                                   ripple_drag_time_n * np.random.uniform(0.8, 1.2), 'drag')
+                self.change_tracker.change_note_offset(n['note_on'], n['pitch'],
+                                                   ripple_drag_time_n * self.rng.uniform(0.8, 1.2), 'drag')
             drag_time_accum += ripple_drag_time_n
 
         print(f"added rhythm drag from note {note['id']}.")
